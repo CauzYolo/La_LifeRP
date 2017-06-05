@@ -5,6 +5,8 @@
 
 local DrawMarkerShow = true
 local DrawBlipTradeShow = true
+local isEnService = false
+local vehicle = nil
 
 -- -900.0, -3002.0, 13.0
 -- -800.0, -3002.0, 13.0
@@ -13,9 +15,11 @@ local Price = 1500
 local random = 1
 local Blip
 local morgue = {
-  [1] = {["name"] = "Disposition",["x"] = 289.727600097656, ["y"] = -1344.177734375, ["z"] = 24.5377960205078},
-  [2] = {["name"] = "Véhicule Morgue",["x"] = 245.443954467773, ["y"] = -1410.55725097656, ["z"] = 30.587495803833},
-  [3] = {["name"] = "Morgue",["x"] = 223.208068847656, ["y"] = -1387.89562988281, ["z"] = 30.5365390777588},
+  [1] = {["name"] = "Disposition",["x"] = 289.727600097656, ["y"] = -1344.177734375, ["z"] = 23.5377960205078},
+  [2] = {["name"] = "Véhicule Morgue",["x"] = 245.443954467773, ["y"] = -1410.55725097656, ["z"] = 29.587495803833},
+  [3] = {["name"] = "Morgue",["x"] = 223.208068847656, ["y"] = -1387.89562988281, ["z"] = 29.5365390777588},
+  [4] = {["name"] = "Prise de service",["x"] = 234.36227416992, ["y"] = -1392.1334228516, ["z"] = 29.5365390777588},
+
 }
 local hopital = {
   [1] = {["name"] = "Hôpital",["x"]=-261.992340087891,["y"]=6333.66162109375,["z"]=32.4210891723633},
@@ -125,6 +129,7 @@ Citizen.CreateThread(function()
     Citizen.Wait(0)
     if DrawMarkerShow then
        DrawMarker(1, morgue[1].x, morgue[1].y, morgue[1].z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 4.0, 1.0, 0, 0, 255, 75, 0, 0, 2, 0, 0, 0, 0)
+       DrawMarker(1, morgue[4].x, morgue[4].y, morgue[4].z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 4.0, 1.0, 0, 0, 255, 75, 0, 0, 2, 0, 0, 0, 0)
       -- DrawMarker(1, Position.traitement.x, Position.traitement.y, Position.traitement.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 4.0, 1.0, 0, 0, 255, 25, 0, 0, 2, 0, 0, 0, 0)
       -- DrawMarker(1, Position.traitement2.x, Position.traitement2.y, Position.traitement2.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 4.0, 1.0, 0, 0, 255, 25, 0, 0, 2, 0, 0, 0, 0)
       -- DrawMarker(1, Position.traitement3.x, Position.traitement3.y, Position.traitement3.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 4.0, 1.0, 0, 0, 255, 25, 0, 0, 2, 0, 0, 0, 0)
@@ -139,42 +144,95 @@ Citizen.CreateThread(function()
     local playerPos = GetEntityCoords(GetPlayerPed(-1))
 
     local distance = GetDistanceBetweenCoords(playerPos.x, playerPos.y, playerPos.z, morgue[3].x, morgue[3].y, morgue[3].z, true)
-    if not IsInVehicle() then
-      if distance < 5 then
-        ShowInfo('~b~Appuyer sur ~g~E~b~ pour obtenir la destination', 0)
-        if IsControlJustPressed(1,38) then
+    local distancePriseDeService = GetDistanceBetweenCoords(playerPos.x, playerPos.y, playerPos.z, morgue[4].x, morgue[4].y, morgue[4].z, true)
+    if distancePriseDeService < 5 then
+      if not IsInVehicle() then 
+        if isEnService == false then 
+          ShowInfo('~b~Appuyer sur ~g~E~b~ prendre votre service', 0)
+          if IsControlJustPressed(1,38) then
+              TriggerServerEvent("poleemploi:getjobs")
+              Wait(100)
+              if myjob == 12 then
+                TriggerEvent("vmenu:JobOutfit", 2, 162)
+                isEnService = true
+              else
+              ShowMsgtime.msg = '~r~ Vous devez être préposé à la morgue !'
+              ShowMsgtime.time = 150
+            end
+          end
+        else
+          ShowInfo('~b~Appuyer sur ~g~E~b~ terminer votre service', 0)
+          if IsControlJustPressed(1,38) then
+              TriggerServerEvent("poleemploi:getjobs")
+              Wait(100)
+              if myjob == 12 then
+                isEnService = false
+                RemoveBlip(Blip)
+                Blip = nil  
+              end
+          end
+        end
+      end
+    end
+    if distance < 5 then
+      if isEnService == false then
+        ShowInfo('~b~Veuillez prendre votre service', 0)
+      else
+        ShowInfo('~b~Appuyer sur ~g~E~b~ pour obtenir la destination, appuyer sur ~g~F1~b~ pour obtenir un véhicule ', 0)
+        if IsControlJustPressed(1,288) then
           TriggerServerEvent("poleemploi:getjobs")
           Wait(100)
           if myjob == 12 then
-            TriggerEvent("vmenu:JobOutfit", 2, 162)
             local car = GetHashKey("Burrito3")
             RequestModel(car)
             while not HasModelLoaded(car) do
               Wait(1)
             end
-            local vehicle =  CreateVehicle(car, morgue[2].x,  morgue[2].y,  morgue[2].z, 0.0, true, false)
+            vehicle =  CreateVehicle(car, morgue[2].x,  morgue[2].y,  morgue[2].z, 0.0, true, false)
             SetVehicleOnGroundProperly(vehicle)
             SetVehicleNumberPlateText(vehicle, "M15510")
             SetVehRadioStation(vehicle, "OFF")
-  					SetVehicleColours(vehicle, 25, 25)
+            SetVehicleColours(vehicle, 25, 25)
             SetVehicleLivery(vehicle, 4)
-            SetPedIntoVehicle(GetPlayerPed(-1), vehicle, -1)
-            SetVehicleEngineOn(vehicle, true, false, false)
-            SetEntityAsMissionEntity(vehicle, true, true)
-            random = math.random(1, 8)
-            Blip = AddBlipForCoord(hopital[random].x, hopital[random].y, hopital[random].z)
-
-            SetBlipSprite(Blip, 273)
-            SetBlipColour(Blip, 2)
-
-            BeginTextCommandSetBlipName("STRING")
-            AddTextComponentString("Allez chercher le corps")
-            EndTextCommandSetBlipName(Blip)
-            -- TriggerEvent("player:getQuantity", 4, function(data)
-            --     weedcount = data.count
-            -- end)
-            Wait(100)
-            Citizen.Wait(1)
+          end
+        end 
+        if IsControlJustPressed(1,38) then
+          TriggerServerEvent("poleemploi:getjobs")
+          Wait(100)
+          if myjob == 12 then
+            --vehicle =  CreateVehicle(car, morgue[2].x,  morgue[2].y,  morgue[2].z, 0.0, true, false)
+            --SetVehicleOnGroundProperly(vehicle)
+            --SetVehicleNumberPlateText(vehicle, "M15510")
+            --SetVehRadioStation(vehicle, "OFF")
+            --SetVehicleColours(vehicle, 25, 25)
+            --SetVehicleLivery(vehicle, 4)
+            --SetPedIntoVehicle(GetPlayerPed(-1), vehicle, -1)
+            --SetVehicleEngineOn(vehicle, true, false, false)
+            if vehicle == nil then
+              ShowMsgtime.msg = '~r~ Vous devez sortir un véhicule !'
+              ShowMsgtime.time = 150
+            else
+              if Blip == nil then 
+                SetEntityAsMissionEntity(vehicle, true, true)
+                random = math.random(1, 8)
+                Blip = AddBlipForCoord(hopital[random].x, hopital[random].y, hopital[random].z)
+                SetBlipSprite(Blip, 273)
+                SetBlipColour(Blip, 2)
+                ShowMsgtime.msg = '~g~ Aller chercher le corps'
+                ShowMsgtime.time = 150
+                BeginTextCommandSetBlipName("STRING")
+                AddTextComponentString("~g~Allez chercher le corps")
+                EndTextCommandSetBlipName(Blip)
+                -- TriggerEvent("player:getQuantity", 4, function(data)
+                --     weedcount = data.count
+                -- end)
+                Wait(100)
+                Citizen.Wait(1)
+              else
+                ShowMsgtime.msg = '~g~ Aller chercher le corps'
+                ShowMsgtime.time = 150
+              end
+            end
           else
             ShowMsgtime.msg = '~r~ Vous devez être préposé à la morgue !'
             ShowMsgtime.time = 150
@@ -242,6 +300,7 @@ Citizen.CreateThread(function()
               TriggerServerEvent("org:addcorp")
               TriggerServerEvent("org:getcorp")
               TriggerEvent("inventory:sell",0, 1, 26, Price, "")
+              Blip = nil
               --SetEntityAsNoLongerNeeded(Blip.company)
             else
               ShowMsgtime.msg = "~r~ Vous n'avez pas de corps !"
